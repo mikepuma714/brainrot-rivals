@@ -1,0 +1,8 @@
+.DS_Store
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+node_modules
+dist
+out
