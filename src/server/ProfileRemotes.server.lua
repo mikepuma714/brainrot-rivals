@@ -20,47 +20,54 @@ local GetLobbyState = remotes:WaitForChild("GetLobbyState")
 local GetProfile = remotes:WaitForChild("GetProfile")
 local AddTrophies = remotes:WaitForChild("AddTrophies")
 
--- Simple profile for UI/other calls
-GetProfile.OnServerInvoke = function(player)
+-- Canonical Profile payload (locked contract). All fields guaranteed, no nils.
+-- trophies: number, selectedBrainrotId: string, rankedUnlocked: boolean,
+-- unlockedMap: number (count), availableMaps: { { id, name, trophyReward, unlockAt, unlocked } }
+local function buildProfilePayload(player)
 	local data = PlayerDataService:Get(player.UserId)
-	local trophies = data.trophies or 0
+	local trophies = type(data.trophies) == "number" and data.trophies or 0
+	local selectedBrainrotId = type(data.selectedBrainrotId) == "string" and data.selectedBrainrotId or "tung_tung_sahur"
+	local rankedUnlocked = TrophyRules.isRankedUnlocked(trophies) == true
 
-	return {
-		trophies = trophies,
-		selectedBrainrotId = data.selectedBrainrotId,
-		rankedUnlocked = TrophyRules.isRankedUnlocked(trophies),
-	}
-end
-
--- Full lobby state (maps + unlocks)
-GetLobbyState.OnServerInvoke = function(player)
-	local data = PlayerDataService:Get(player.UserId)
-	local trophies = data.trophies or 0
-	local rankedUnlocked = TrophyRules.isRankedUnlocked(trophies)
-
-	local unlockedMaps = {}
+	local unlockedCount = 0
 	local availableMaps = {}
 
 	for _, m in ipairs(Maps.List) do
 		local unlocked = TrophyRules.isMapUnlocked(m.id, trophies) or rankedUnlocked
-		unlockedMaps[m.id] = unlocked
-
 		if unlocked then
-			table.insert(availableMaps, {
-				id = m.id,
-				name = m.name,
-				trophyReward = m.trophyReward,
-			})
+			unlockedCount += 1
 		end
+		table.insert(availableMaps, {
+			id = m.id,
+			name = m.name or "",
+			trophyReward = type(m.trophyReward) == "number" and m.trophyReward or 0,
+			unlockAt = TrophyRules.getMapUnlockAt(m.id),
+			unlocked = unlocked,
+		})
 	end
 
 	return {
 		trophies = trophies,
-		selectedBrainrotId = data.selectedBrainrotId,
+		selectedBrainrotId = selectedBrainrotId,
 		rankedUnlocked = rankedUnlocked,
-		unlockedMaps = unlockedMaps,
+		unlockedMap = unlockedCount,
 		availableMaps = availableMaps,
 	}
+end
+
+GetProfile.OnServerInvoke = function(player)
+	return buildProfilePayload(player)
+end
+
+GetLobbyState.OnServerInvoke = function(player)
+	local payload = buildProfilePayload(player)
+	-- Add unlockedMaps table for consumers that key by map id
+	local unlockedMaps = {}
+	for _, m in ipairs(payload.availableMaps) do
+		unlockedMaps[m.id] = m.unlocked
+	end
+	payload.unlockedMaps = unlockedMaps
+	return payload
 end
 
 -- Debug/admin: adds trophies (server-authoritative)

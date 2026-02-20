@@ -30,4 +30,8 @@ function TrophyRules.getMapReward(mapId)
 	return 0
 end
 
+function TrophyRules.getMapUnlockAt(mapId)
+	return MAP_THRESHOLDS[mapId] or 0
+end
+
 return TrophyRules
