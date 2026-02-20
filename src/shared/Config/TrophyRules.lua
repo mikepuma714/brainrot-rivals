@@ -1,37 +1,35 @@
--- Trophy-based unlock rules: maps and ranked mode
+-- Trophy-based unlock rules. Reads ONLY trophyReward/unlockAt from Maps.List.
 local TrophyRules = {}
 
 local Maps = require(script.Parent:WaitForChild("Maps"))
 
--- Map IDs that require trophies to unlock (extend as needed)
-local MAP_THRESHOLDS = {
-	-- mapId = trophies required
-	["default"] = 0,
-}
+local RANKED_UNLOCK_AT = 120
 
 function TrophyRules.isMapUnlocked(mapId, trophies)
-	local required = MAP_THRESHOLDS[mapId]
-	if required == nil then
-		required = 0
-	end
+	local required = TrophyRules.getMapUnlockAt(mapId)
 	return (trophies or 0) >= required
 end
 
 function TrophyRules.isRankedUnlocked(trophies)
-	return (trophies or 0) >= 120
+	return (trophies or 0) >= RANKED_UNLOCK_AT
 end
 
 function TrophyRules.getMapReward(mapId)
 	for _, m in ipairs(Maps.List) do
 		if m.id == mapId then
-			return m.trophyReward or 0
+			return (type(m.trophyReward) == "number") and m.trophyReward or 0
 		end
 	end
 	return 0
 end
 
 function TrophyRules.getMapUnlockAt(mapId)
-	return MAP_THRESHOLDS[mapId] or 0
+	for _, m in ipairs(Maps.List) do
+		if m.id == mapId then
+			return (type(m.unlockAt) == "number") and m.unlockAt or 0
+		end
+	end
+	return 0
 end
 
 return TrophyRules
