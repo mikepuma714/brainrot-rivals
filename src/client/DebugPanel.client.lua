@@ -5,8 +5,11 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GetProfile = Remotes:WaitForChild("GetProfile")
 local AddTrophies = Remotes:WaitForChild("AddTrophies")
 local SetSelectedMap = Remotes:WaitForChild("SetSelectedMap")
+local RequestQueue = Remotes:WaitForChild("RequestQueue")
+local QueueStatus = Remotes:WaitForChild("QueueStatus")
 
 local player = Players.LocalPlayer
+local queueState = { queued = false, reason = "", mapId = nil }
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "BrainrotDebugGui"
@@ -14,7 +17,7 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 320)
+frame.Size = UDim2.new(0, 360, 0, 410)
 frame.Position = UDim2.new(0, 20, 0, 120)
 frame.BackgroundTransparency = 0.2
 frame.Parent = gui
@@ -63,7 +66,11 @@ end
 
 local function refresh()
 	local state = GetProfile:InvokeServer()
-	headerLabel.Text = string.format("Trophies: %d | Ranked: %s | Selected: %s", num(state.trophies), tostring(state.rankedUnlocked == true), tostring(state.selectedMapId or "—"))
+	local queuedStr = queueState.queued and ("Queued: " .. tostring(queueState.mapId or "—")) or "Queued: false"
+	if queueState.reason and queueState.reason ~= "" then
+		queuedStr = queuedStr .. " (" .. tostring(queueState.reason) .. ")"
+	end
+	headerLabel.Text = string.format("Trophies: %d | Ranked: %s | Selected: %s | %s", num(state.trophies), tostring(state.rankedUnlocked == true), tostring(state.selectedMapId or "—"), queuedStr)
 
 	-- Clear existing map buttons
 	for _, child in ipairs(mapListFrame:GetChildren()) do
@@ -111,7 +118,20 @@ makeButton("+20 Trophies (Unlock Test)", 265, function()
 	refresh()
 end)
 
-makeButton("Refresh", 310, function()
+makeButton("Queue", 310, function()
+	local state = GetProfile:InvokeServer()
+	local mapId = state.selectedMapId or "brainrot_island"
+	RequestQueue:FireServer(mapId)
+end)
+
+makeButton("Refresh", 355, function()
+	refresh()
+end)
+
+QueueStatus.OnClientEvent:Connect(function(msg)
+	queueState.queued = (msg.state and msg.state.queued == true) or false
+	queueState.reason = (type(msg.reason) == "string") and msg.reason or ""
+	queueState.mapId = (msg.state and msg.state.mapId) or nil
 	refresh()
 end)
 

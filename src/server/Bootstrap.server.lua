@@ -15,6 +15,9 @@ if ServerConfig.DEBUG then
 	print("[BrainrotRivals] DEBUG mode ON")
 end
 
+require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("EnsureRemotes"))
+require(script.Parent:WaitForChild("Services"):WaitForChild("QueueService"))
+
 -- Create remotes folder and functions if needed
 local remotesFolder = ReplicatedStorage:FindFirstChild(RemotesDef.FolderName)
 if not remotesFolder then

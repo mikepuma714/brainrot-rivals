@@ -27,6 +27,8 @@ ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
 ensureRemote(remotes, "RemoteFunction", "GetProfile")
 ensureRemote(remotes, "RemoteEvent", "AddTrophies")
 ensureRemote(remotes, "RemoteEvent", "SetSelectedMap")
+ensureRemote(remotes, "RemoteEvent", "RequestQueue")
+ensureRemote(remotes, "RemoteEvent", "QueueStatus")
 
 -- If you still use this anywhere, keep it too:
 ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
