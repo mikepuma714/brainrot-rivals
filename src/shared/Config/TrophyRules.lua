@@ -18,7 +18,7 @@ function TrophyRules.isMapUnlocked(mapId, trophies)
 end
 
 function TrophyRules.isRankedUnlocked(trophies)
-	return (trophies or 0) >= 10
+	return (trophies or 0) >= 120
 end
 
 function TrophyRules.getMapReward(mapId)
