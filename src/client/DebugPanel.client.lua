@@ -32,10 +32,13 @@ title.Parent = frame
 
 local headerLabel = Instance.new("TextLabel")
 headerLabel.Name = "Header"
-headerLabel.Size = UDim2.new(1, -20, 0, 24)
+headerLabel.Size = UDim2.new(1, -20, 0, 48)
 headerLabel.Position = UDim2.new(0, 10, 0, 50)
 headerLabel.BackgroundTransparency = 1
 headerLabel.TextSize = 14
+headerLabel.TextWrapped = true
+headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+headerLabel.TextYAlignment = Enum.TextYAlignment.Top
 headerLabel.Font = Enum.Font.Gotham
 headerLabel.Text = "Loading..."
 headerLabel.Parent = frame
@@ -43,7 +46,7 @@ headerLabel.Parent = frame
 local mapListFrame = Instance.new("Frame")
 mapListFrame.Name = "MapList"
 mapListFrame.Size = UDim2.new(1, -20, 0, 130)
-mapListFrame.Position = UDim2.new(0, 10, 0, 78)
+mapListFrame.Position = UDim2.new(0, 10, 0, 102)
 mapListFrame.BackgroundTransparency = 1
 mapListFrame.ClipsDescendants = true
 mapListFrame.Parent = frame
@@ -66,11 +69,14 @@ end
 
 local function refresh()
 	local state = GetProfile:InvokeServer()
-	local queuedStr = queueState.queued and ("Queued: " .. tostring(queueState.mapId or "—")) or "Queued: false"
+	local lines = {
+		string.format("Trophies: %d | Ranked: %s | Selected: %s", num(state.trophies), tostring(state.rankedUnlocked == true), tostring(state.selectedMapId or "—")),
+		"Queued: " .. tostring(queueState.queued),
+	}
 	if queueState.reason and queueState.reason ~= "" then
-		queuedStr = queuedStr .. " (" .. tostring(queueState.reason) .. ")"
+		table.insert(lines, "Queue Error: " .. tostring(queueState.reason))
 	end
-	headerLabel.Text = string.format("Trophies: %d | Ranked: %s | Selected: %s | %s", num(state.trophies), tostring(state.rankedUnlocked == true), tostring(state.selectedMapId or "—"), queuedStr)
+	headerLabel.Text = table.concat(lines, "\n")
 
 	-- Clear existing map buttons
 	for _, child in ipairs(mapListFrame:GetChildren()) do
