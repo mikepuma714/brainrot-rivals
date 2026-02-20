@@ -72,4 +72,23 @@ Players.PlayerRemoving:Connect(function(player)
 	profiles[player.UserId] = nil
 end)
 
+-- Load players already in game when script starts (Studio Play, etc.)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(function()
+		local data
+		pcall(function()
+			data = store:GetAsync(tostring(player.UserId))
+		end)
+
+		if type(data) ~= "table" then
+			data = defaultProfile()
+		end
+
+		data.unlockedMap = computeUnlockedMap(data.trophies)
+		if data.unlockedMap >= 5 then data.ranked = true end
+
+		profiles[player.UserId] = data
+	end)
+end
+
 return ProfileService
