@@ -14,6 +14,7 @@ local cache: {[number]: any} = {}
 local DEFAULT_DATA = {
 	trophies = 0,
 	selectedBrainrotId = "tung_tung_sahur",
+	selectedMapId = "brainrot_island",
 }
 
 local function deepCopy(t)
@@ -84,6 +85,7 @@ function PlayerDataService:Save(player: Player)
 	local payload = {
 		trophies = data.trophies,
 		selectedBrainrotId = data.selectedBrainrotId,
+		selectedMapId = data.selectedMapId,
 	}
 
 	local ok, err = withRetries(function()
@@ -105,6 +107,16 @@ end
 function PlayerDataService:SetSelectedBrainrot(player: Player, brainrotId: string)
 	local data = self:Get(player.UserId)
 	data.selectedBrainrotId = brainrotId
+end
+
+function PlayerDataService:SetSelectedMap(player: Player, mapId: string)
+	local data = self:Get(player.UserId)
+	data.selectedMapId = mapId
+end
+
+function PlayerDataService:GetSelectedMap(player: Player): string
+	local data = self:Get(player.UserId)
+	return data.selectedMapId or "brainrot_island"
 end
 
 -- lifecycle hooks

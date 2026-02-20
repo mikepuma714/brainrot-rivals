@@ -3,7 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GetProfile = Remotes:WaitForChild("GetProfile")
-local AddTrophies = Remotes:WaitForChild("AddTrophies") -- debug only
+local AddTrophies = Remotes:WaitForChild("AddTrophies")
+local SetSelectedMap = Remotes:WaitForChild("SetSelectedMap")
 
 local player = Players.LocalPlayer
 
@@ -26,18 +27,23 @@ title.Font = Enum.Font.GothamBlack
 title.Text = "Brainrot Rivals Debug"
 title.Parent = frame
 
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 160)
-status.Position = UDim2.new(0, 10, 0, 50)
-status.BackgroundTransparency = 1
-status.TextScaled = false
-status.TextSize = 14
-status.TextWrapped = true
-status.Font = Enum.Font.Gotham
-status.TextXAlignment = Enum.TextXAlignment.Left
-status.TextYAlignment = Enum.TextYAlignment.Top
-status.Text = "Loading..."
-status.Parent = frame
+local headerLabel = Instance.new("TextLabel")
+headerLabel.Name = "Header"
+headerLabel.Size = UDim2.new(1, -20, 0, 24)
+headerLabel.Position = UDim2.new(0, 10, 0, 50)
+headerLabel.BackgroundTransparency = 1
+headerLabel.TextSize = 14
+headerLabel.Font = Enum.Font.Gotham
+headerLabel.Text = "Loading..."
+headerLabel.Parent = frame
+
+local mapListFrame = Instance.new("Frame")
+mapListFrame.Name = "MapList"
+mapListFrame.Size = UDim2.new(1, -20, 0, 130)
+mapListFrame.Position = UDim2.new(0, 10, 0, 78)
+mapListFrame.BackgroundTransparency = 1
+mapListFrame.ClipsDescendants = true
+mapListFrame.Parent = frame
 
 local function num(x)
 	return (type(x) == "number") and x or 0
@@ -57,17 +63,40 @@ end
 
 local function refresh()
 	local state = GetProfile:InvokeServer()
-	local lines = {
-		string.format("Trophies: %d | Ranked: %s", num(state.trophies), tostring(state.rankedUnlocked == true)),
-		"Maps:",
-	}
+	headerLabel.Text = string.format("Trophies: %d | Ranked: %s | Selected: %s", num(state.trophies), tostring(state.rankedUnlocked == true), tostring(state.selectedMapId or "—"))
+
+	-- Clear existing map buttons
+	for _, child in ipairs(mapListFrame:GetChildren()) do
+		child:Destroy()
+	end
+
+	local selectedMapId = state.selectedMapId or "brainrot_island"
+	local y = 0
+	local rowHeight = 26
+
 	for _, map in ipairs(state.availableMaps or {}) do
 		local reward = num(map.trophyReward)
 		local unlockAt = num(map.unlockAt)
 		local mark = (map.unlocked == true) and "✅" or "❌"
-		table.insert(lines, string.format("- %s (Reward: %d, UnlockAt: %d) %s", tostring(map.name or map.id), reward, unlockAt, mark))
+		local isSelected = (map.id == selectedMapId)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, rowHeight - 2)
+		btn.Position = UDim2.new(0, 0, 0, y)
+		btn.TextXAlignment = Enum.TextXAlignment.Left
+		btn.Font = Enum.Font.Gotham
+		btn.TextSize = 12
+		btn.Text = string.format("%s %s (Reward: %d, UnlockAt: %d) %s", isSelected and "► " or "  ", tostring(map.name or map.id), reward, unlockAt, mark)
+		btn.BackgroundTransparency = isSelected and 0.5 or 0.8
+		btn.Parent = mapListFrame
+		if map.unlocked == true then
+			btn.MouseButton1Click:Connect(function()
+				SetSelectedMap:FireServer(map.id)
+				task.wait(0.1)
+				refresh()
+			end)
+		end
+		y = y + rowHeight
 	end
-	status.Text = table.concat(lines, "\n")
 end
 
 makeButton("+3 Trophies (Map 1 Win)", 220, function()

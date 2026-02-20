@@ -19,6 +19,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GetLobbyState = remotes:WaitForChild("GetLobbyState")
 local GetProfile = remotes:WaitForChild("GetProfile")
 local AddTrophies = remotes:WaitForChild("AddTrophies")
+local SetSelectedMap = remotes:WaitForChild("SetSelectedMap")
 
 -- Canonical Profile payload (locked contract). All fields guaranteed, no nils.
 -- trophies: number, selectedBrainrotId: string, rankedUnlocked: boolean,
@@ -49,6 +50,7 @@ local function buildProfilePayload(player)
 	return {
 		trophies = trophies,
 		selectedBrainrotId = selectedBrainrotId,
+		selectedMapId = type(data.selectedMapId) == "string" and data.selectedMapId or "brainrot_island",
 		rankedUnlocked = rankedUnlocked,
 		unlockedMap = unlockedCount,
 		availableMaps = availableMaps,
@@ -69,6 +71,29 @@ GetLobbyState.OnServerInvoke = function(player)
 	payload.unlockedMaps = unlockedMaps
 	return payload
 end
+
+local function mapExists(mapId)
+	for _, m in ipairs(Maps.List) do
+		if m.id == mapId then return true end
+	end
+	return false
+end
+
+SetSelectedMap.OnServerEvent:Connect(function(player, mapId)
+	if type(mapId) ~= "string" then return end
+	if not mapExists(mapId) then return end
+
+	local data = PlayerDataService:Get(player.UserId)
+	local trophies = tonumber(data.trophies) or 0
+	local rankedUnlocked = TrophyRules.isRankedUnlocked(trophies)
+
+	if (not rankedUnlocked) and (not TrophyRules.isMapUnlocked(mapId, trophies)) then
+		return
+	end
+
+	PlayerDataService:SetSelectedMap(player, mapId)
+	PlayerDataService:Save(player)
+end)
 
 -- Debug/admin: adds trophies (server-authoritative)
 AddTrophies.OnServerEvent:Connect(function(player, amount)

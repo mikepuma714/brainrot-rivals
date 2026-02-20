@@ -26,6 +26,7 @@ local remotes = ensureFolder(ReplicatedStorage, "Remotes")
 ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
 ensureRemote(remotes, "RemoteFunction", "GetProfile")
 ensureRemote(remotes, "RemoteEvent", "AddTrophies")
+ensureRemote(remotes, "RemoteEvent", "SetSelectedMap")
 
 -- If you still use this anywhere, keep it too:
 ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
