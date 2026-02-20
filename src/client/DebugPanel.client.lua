@@ -57,7 +57,7 @@ local function refresh()
 		"Trophies: %d | Unlocked Map: %d | Ranked: %s",
 		num(profile.trophies),
 		num(profile.unlockedMap),
-		tostring(profile.rankedUnlocked or profile.ranked)
+		tostring(profile.rankedUnlocked == true)
 	)
 end
 
