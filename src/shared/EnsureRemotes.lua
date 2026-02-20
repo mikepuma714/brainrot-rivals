@@ -1,25 +1,33 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-if not remotes then
-	remotes = Instance.new("Folder")
-	remotes.Name = "Remotes"
-	remotes.Parent = ReplicatedStorage
-end
-
-local function ensure(name, className)
-	local obj = remotes:FindFirstChild(name)
-	if not obj then
-		obj = Instance.new(className)
-		obj.Name = name
-		obj.Parent = remotes
+local function ensureFolder(parent, name)
+	local f = parent:FindFirstChild(name)
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = name
+		f.Parent = parent
 	end
-	return obj
+	return f
 end
 
--- Existing (keep)
-ensure("GetLobbyState", "RemoteFunction")
+local function ensureRemote(parent, className, name)
+	local r = parent:FindFirstChild(name)
+	if not r then
+		r = Instance.new(className)
+		r.Name = name
+		r.Parent = parent
+	end
+	return r
+end
 
--- New (add)
-ensure("GetProfile", "RemoteFunction")
-ensure("AddTrophies", "RemoteEvent") -- debug only
+local remotes = ensureFolder(ReplicatedStorage, "Remotes")
+
+-- These must match the names your game uses
+ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
+ensureRemote(remotes, "RemoteFunction", "GetProfile")
+ensureRemote(remotes, "RemoteEvent", "AddTrophies")
+
+-- If you still use this anywhere, keep it too:
+ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
+
+return true
