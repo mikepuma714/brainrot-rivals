@@ -35,6 +35,10 @@ status.Font = Enum.Font.Gotham
 status.Text = "Loading..."
 status.Parent = frame
 
+local function num(x)
+	return (type(x) == "number") and x or 0
+end
+
 local function makeButton(text, y, onClick)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, -20, 0, 40)
@@ -49,10 +53,11 @@ end
 
 local function refresh()
 	local profile = GetProfile:InvokeServer()
-	status.Text = string.format("Trophies: %d | Unlocked Map: %d | Ranked: %s",
-		profile.trophies,
-		profile.unlockedMap,
-		tostring(profile.ranked)
+	status.Text = string.format(
+		"Trophies: %d | Unlocked Map: %d | Ranked: %s",
+		num(profile.trophies),
+		num(profile.unlockedMap),
+		tostring(profile.rankedUnlocked or profile.ranked)
 	)
 end
 
