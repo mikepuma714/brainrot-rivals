@@ -58,6 +58,9 @@ function PlayerDataService:Load(player: Player)
 		return store:GetAsync(tostring(userId))
 	end)
 
+	print("[PlayerDataService] GetAsync ok=", ok, " dataType=", typeof(data))
+	if not ok then warn("[PlayerDataService] GetAsync error:", data) end
+
 	if ok and type(data) == "table" then
 		-- merge defaults
 		local merged = deepCopy(DEFAULT_DATA)
