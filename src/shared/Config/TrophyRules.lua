@@ -3,15 +3,13 @@ local TrophyRules = {}
 
 local Maps = require(script.Parent:WaitForChild("Maps"))
 
-local RANKED_UNLOCK_AT = 120
-
 function TrophyRules.isMapUnlocked(mapId, trophies)
 	local required = TrophyRules.getMapUnlockAt(mapId)
 	return (trophies or 0) >= required
 end
 
 function TrophyRules.isRankedUnlocked(trophies)
-	return (trophies or 0) >= RANKED_UNLOCK_AT
+	return (trophies or 0) >= (Maps.RankedUnlockAt or 120)
 end
 
 function TrophyRules.getMapReward(mapId)
