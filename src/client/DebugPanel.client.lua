@@ -7,6 +7,7 @@ local AddTrophies = Remotes:WaitForChild("AddTrophies")
 local SetSelectedMap = Remotes:WaitForChild("SetSelectedMap")
 local RequestQueue = Remotes:WaitForChild("RequestQueue")
 local QueueStatus = Remotes:WaitForChild("QueueStatus")
+local MatchState = Remotes:WaitForChild("MatchState")
 
 local player = Players.LocalPlayer
 local queueState = { queued = false, reason = "", mapId = nil }
@@ -32,7 +33,7 @@ title.Parent = frame
 
 local headerLabel = Instance.new("TextLabel")
 headerLabel.Name = "Header"
-headerLabel.Size = UDim2.new(1, -20, 0, 48)
+headerLabel.Size = UDim2.new(1, -20, 0, 64)
 headerLabel.Position = UDim2.new(0, 10, 0, 50)
 headerLabel.BackgroundTransparency = 1
 headerLabel.TextSize = 14
@@ -46,7 +47,7 @@ headerLabel.Parent = frame
 local mapListFrame = Instance.new("Frame")
 mapListFrame.Name = "MapList"
 mapListFrame.Size = UDim2.new(1, -20, 0, 130)
-mapListFrame.Position = UDim2.new(0, 10, 0, 102)
+mapListFrame.Position = UDim2.new(0, 10, 0, 118)
 mapListFrame.BackgroundTransparency = 1
 mapListFrame.ClipsDescendants = true
 mapListFrame.Parent = frame
@@ -75,6 +76,10 @@ local function refresh()
 	}
 	if queueState.reason and queueState.reason ~= "" then
 		table.insert(lines, "Queue Error: " .. tostring(queueState.reason))
+	end
+	local lastMatch = _G.__lastMatchFound
+	if lastMatch and lastMatch.phase == "match_found" then
+		table.insert(lines, string.format("Match: FOUND | Map: %s | Team: %s", tostring(lastMatch.mapId or "—"), tostring(lastMatch.team or "—")))
 	end
 	headerLabel.Text = table.concat(lines, "\n")
 
@@ -139,6 +144,13 @@ QueueStatus.OnClientEvent:Connect(function(msg)
 	queueState.reason = (type(msg.reason) == "string") and msg.reason or ""
 	queueState.mapId = (msg.state and msg.state.mapId) or nil
 	refresh()
+end)
+
+MatchState.OnClientEvent:Connect(function(msg)
+	if msg and msg.phase == "match_found" then
+		_G.__lastMatchFound = msg
+		refresh()
+	end
 end)
 
 refresh()
