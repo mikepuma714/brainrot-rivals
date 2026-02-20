@@ -13,7 +13,7 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 220)
+frame.Size = UDim2.new(0, 360, 0, 320)
 frame.Position = UDim2.new(0, 20, 0, 120)
 frame.BackgroundTransparency = 0.2
 frame.Parent = gui
@@ -27,11 +27,15 @@ title.Text = "Brainrot Rivals Debug"
 title.Parent = frame
 
 local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 40)
+status.Size = UDim2.new(1, -20, 0, 160)
 status.Position = UDim2.new(0, 10, 0, 50)
 status.BackgroundTransparency = 1
-status.TextScaled = true
+status.TextScaled = false
+status.TextSize = 14
+status.TextWrapped = true
 status.Font = Enum.Font.Gotham
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.TextYAlignment = Enum.TextYAlignment.Top
 status.Text = "Loading..."
 status.Parent = frame
 
@@ -52,28 +56,33 @@ local function makeButton(text, y, onClick)
 end
 
 local function refresh()
-	local profile = GetProfile:InvokeServer()
-	status.Text = string.format(
-		"Trophies: %d | Unlocked Map: %d | Ranked: %s",
-		num(profile.trophies),
-		num(profile.unlockedMap),
-		tostring(profile.rankedUnlocked == true)
-	)
+	local state = GetProfile:InvokeServer()
+	local lines = {
+		string.format("Trophies: %d | Ranked: %s", num(state.trophies), tostring(state.rankedUnlocked == true)),
+		"Maps:",
+	}
+	for _, map in ipairs(state.availableMaps or {}) do
+		local reward = num(map.trophyReward)
+		local unlockAt = num(map.unlockAt)
+		local mark = (map.unlocked == true) and "✅" or "❌"
+		table.insert(lines, string.format("- %s (Reward: %d, UnlockAt: %d) %s", tostring(map.name or map.id), reward, unlockAt, mark))
+	end
+	status.Text = table.concat(lines, "\n")
 end
 
-makeButton("+3 Trophies (Map 1 Win)", 100, function()
+makeButton("+3 Trophies (Map 1 Win)", 220, function()
 	AddTrophies:FireServer(3)
 	task.wait(0.1)
 	refresh()
 end)
 
-makeButton("+20 Trophies (Unlock Test)", 145, function()
+makeButton("+20 Trophies (Unlock Test)", 265, function()
 	AddTrophies:FireServer(20)
 	task.wait(0.1)
 	refresh()
 end)
 
-makeButton("Refresh", 190, function()
+makeButton("Refresh", 310, function()
 	refresh()
 end)
 
