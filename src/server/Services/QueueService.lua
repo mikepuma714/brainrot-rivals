@@ -12,11 +12,15 @@ local RequestQueue = remotes:WaitForChild("RequestQueue")
 local QueueStatus = remotes:WaitForChild("QueueStatus")
 local MatchState = remotes:WaitForChild("MatchState")
 
-local QueueService = {}
+local MIN_PLAYERS = 2
+local MAX_PLAYERS = 12
+local COUNTDOWN_TIME = 10
+local COUNTDOWN_TO_START = 5
 
 -- mapKey = mapId .. "|" .. tostring(ranked)
 local queues = {}
 local queuedKeyByUserId = {}
+local countdownRunning = {}
 
 local function mapExists(mapId)
 	for _, m in ipairs(Maps.List) do
@@ -53,11 +57,13 @@ local function removeFromQueue(userId)
 	end
 end
 
+-- Teams auto-balance: first half A, second half B
 local function broadcastMatchFound(mapId, ranked, userIds)
+	local half = math.ceil(#userIds / 2)
 	for i, uid in ipairs(userIds) do
 		local player = Players:GetPlayerByUserId(uid)
 		if player then
-			local team = (i <= 6) and "A" or "B"
+			local team = (i <= half) and "A" or "B"
 			MatchState:FireClient(player, {
 				phase = "match_found",
 				mapId = mapId,
@@ -68,29 +74,36 @@ local function broadcastMatchFound(mapId, ranked, userIds)
 	end
 end
 
-local function tryMakeMatch(queueKey)
-	local q = queues[queueKey]
-	if not q or #q < 2 then return end
-
-	local picked = {}
-	for i = 1, 2 do
-		table.insert(picked, table.remove(q, 1))
-	end
-
+local function startMatchWithPlayers(queueKey, picked)
 	for _, uid in ipairs(picked) do
 		queuedKeyByUserId[uid] = nil
 	end
-
-	if #q == 0 then
+	local q = queues[queueKey]
+	if q and #q == 0 then
 		queues[queueKey] = nil
 	end
-
 	local mapId, rankedStr = queueKey:match("^(.-)|(.+)$")
 	local ranked = (rankedStr == "true")
-
 	broadcastMatchFound(mapId, ranked, picked)
+
+	-- Phase: countdown (5s) then in_match
+	for _, uid in ipairs(picked) do
+		local player = Players:GetPlayerByUserId(uid)
+		if player then
+			MatchState:FireClient(player, { phase = "countdown", seconds = COUNTDOWN_TO_START, mapId = mapId, ranked = ranked })
+		end
+	end
+	task.delay(COUNTDOWN_TO_START, function()
+		for _, uid in ipairs(picked) do
+			local player = Players:GetPlayerByUserId(uid)
+			if player then
+				MatchState:FireClient(player, { phase = "in_match", mapId = mapId, ranked = ranked })
+			end
+		end
+	end)
 end
 
+-- Start match when: 12 players (immediate) or countdown ends with >= 2
 RequestQueue.OnServerEvent:Connect(function(player, mapId)
 	if type(mapId) ~= "string" then
 		return sendQueueStatus(player, false, "bad_map")
@@ -116,14 +129,43 @@ RequestQueue.OnServerEvent:Connect(function(player, mapId)
 	table.insert(queues[key], player.UserId)
 	queuedKeyByUserId[player.UserId] = key
 
+	local q = queues[key]
 	sendQueueStatus(player, true, "", {
 		queued = true,
 		mapId = mapId,
 		ranked = ranked,
-		queuedCount = #queues[key],
+		queuedCount = #q,
 	})
 
-	tryMakeMatch(key)
+	-- Immediate start when queue hits 12
+	if #q >= MAX_PLAYERS then
+		countdownRunning[key] = false
+		local picked = {}
+		for i = 1, MAX_PLAYERS do
+			table.insert(picked, table.remove(q, 1))
+		end
+		startMatchWithPlayers(key, picked)
+		return
+	end
+
+	-- First player in this queue: start countdown
+	if #q == 1 then
+		countdownRunning[key] = true
+		task.delay(COUNTDOWN_TIME, function()
+			if not countdownRunning[key] then return end
+			countdownRunning[key] = false
+
+			local qNow = queues[key]
+			if not qNow or #qNow < MIN_PLAYERS then return end
+
+			local toTake = math.min(MAX_PLAYERS, #qNow)
+			local picked = {}
+			for i = 1, toTake do
+				table.insert(picked, table.remove(qNow, 1))
+			end
+			startMatchWithPlayers(key, picked)
+		end)
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
