@@ -70,10 +70,10 @@ end
 
 local function tryMakeMatch(queueKey)
 	local q = queues[queueKey]
-	if not q or #q < 12 then return end
+	if not q or #q < 2 then return end
 
 	local picked = {}
-	for i = 1, 12 do
+	for i = 1, 2 do
 		table.insert(picked, table.remove(q, 1))
 	end
 
