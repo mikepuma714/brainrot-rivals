@@ -74,6 +74,28 @@ local function broadcastMatchFound(mapId, ranked, userIds)
 	end
 end
 
+local function teleportToMapSpawns(players, mapId)
+	local mapFolder = workspace:FindFirstChild(mapId)
+	if not mapFolder then
+		warn("Map not found:", mapId)
+		return
+	end
+
+	local teamASpawn = mapFolder:FindFirstChild("TeamASpawn")
+	local teamBSpawn = mapFolder:FindFirstChild("TeamBSpawn")
+
+	local half = math.ceil(#players / 2)
+
+	for i, player in ipairs(players) do
+		if player and player.Character and player.Character.PrimaryPart then
+			local spawn = (i <= half) and teamASpawn or teamBSpawn
+			if spawn then
+				player.Character:SetPrimaryPartCFrame(spawn.CFrame + Vector3.new(0, 3, 0))
+			end
+		end
+	end
+end
+
 local function startMatchWithPlayers(queueKey, picked)
 	for _, uid in ipairs(picked) do
 		queuedKeyByUserId[uid] = nil
@@ -94,12 +116,15 @@ local function startMatchWithPlayers(queueKey, picked)
 		end
 	end
 	task.delay(COUNTDOWN_TO_START, function()
+		local playersList = {}
 		for _, uid in ipairs(picked) do
 			local player = Players:GetPlayerByUserId(uid)
 			if player then
 				MatchState:FireClient(player, { phase = "in_match", mapId = mapId, ranked = ranked })
+				table.insert(playersList, player)
 			end
 		end
+		teleportToMapSpawns(playersList, mapId)
 	end)
 end
 
