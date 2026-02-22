@@ -114,10 +114,11 @@ local function addScore(team)
 		currentMapId = nil
 		matchScores.A = 0
 		matchScores.B = 0
-		print("[QueueService] Win: team", team, "reached", newScore, ", ending match for", #picked, "players")
+		-- Log so it shows in Server Output (in Test > Server and Clients, check the SERVER window)
+		warn("[QueueService] WIN: team", team, "reached", newScore, "| ending match for", picked and #picked or 0, "players")
 		local ok, err = pcall(endMatch, picked, mapId, team)
 		if not ok then
-			warn("[QueueService] endMatch error:", err)
+			warn("[QueueService] endMatch ERROR:", err)
 		end
 	end
 end
@@ -146,6 +147,11 @@ local function hookDeathsForMatchPlayers()
 	end
 end
 
+local function getMatchStateRemote()
+	local folder = ReplicatedStorage:FindFirstChild("Remotes")
+	return folder and folder:FindFirstChild("MatchState")
+end
+
 local function endMatch(picked, mapId, winnerTeam)
 	currentPickedPlayers = nil
 	currentMapId = nil
@@ -157,34 +163,55 @@ local function endMatch(picked, mapId, winnerTeam)
 		warn("[QueueService] endMatch: invalid picked", type(picked))
 		return
 	end
-	print("[QueueService] endMatch: winner", winnerTeam, "players", #picked)
 
+	local matchStateRemote = getMatchStateRemote()
+	if not matchStateRemote then
+		warn("[QueueService] endMatch: MatchState remote is nil, cannot fire to clients")
+	end
+
+	-- 1) Fire match_over first so clients know the match ended (even if later steps error)
 	for _, plr in ipairs(picked) do
-		if plr and plr.Parent == Players then
-			MatchState:FireClient(plr, {
+		if plr and plr.Parent == Players and matchStateRemote then
+			matchStateRemote:FireClient(plr, {
 				phase = "match_over",
 				mapId = mapId,
 				winner = winnerTeam,
 			})
 		end
 	end
+	warn("[QueueService] endMatch: sent match_over to", #picked, "players, winner", winnerTeam)
 
+	-- 2) Award trophies (pcall so a failure doesn't block lobby)
 	local reward = getMapReward(mapId)
 	local half = math.ceil(#picked / 2)
 	for i, plr in ipairs(picked) do
 		if plr and plr.Parent == Players then
 			local team = (i <= half) and "A" or "B"
 			if team == winnerTeam then
-				PlayerDataService:IncrementTrophies(plr, reward)
-				PlayerDataService:Save(plr)
+				local ok, err = pcall(function()
+					PlayerDataService:IncrementTrophies(plr, reward)
+					PlayerDataService:Save(plr)
+				end)
+				if not ok then
+					warn("[QueueService] endMatch: trophy/save error for", plr.Name, err)
+				end
 			end
 		end
 	end
 
+	-- 3) Respawn and send lobby (pcall per player so one failure doesn't block others)
 	for _, plr in ipairs(picked) do
 		if plr and plr.Parent == Players then
-			plr:LoadCharacter()
-			MatchState:FireClient(plr, { phase = "lobby" })
+			local ok, err = pcall(function()
+				plr:LoadCharacter()
+				local remote = getMatchStateRemote()
+				if remote then
+					remote:FireClient(plr, { phase = "lobby" })
+				end
+			end)
+			if not ok then
+				warn("[QueueService] endMatch: LoadCharacter/lobby error for", plr.Name, err)
+			end
 		end
 	end
 end
