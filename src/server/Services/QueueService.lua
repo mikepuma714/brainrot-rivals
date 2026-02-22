@@ -30,6 +30,7 @@ local countdownRunning = {}
 local matchScores = { A = 0, B = 0 }
 local currentPickedPlayers = nil
 local currentMapId = nil
+local teamByUserId = {}
 
 local function mapExists(mapId)
 	for _, m in ipairs(Maps.List) do
@@ -116,9 +117,34 @@ local function addScore(team)
 	end
 end
 
+local function oppositeTeam(team)
+	return (team == "A") and "B" or "A"
+end
+
+local function hookDeathsForMatchPlayers()
+	for _, plr in ipairs(currentPickedPlayers or {}) do
+		local team = teamByUserId[plr.UserId]
+		if team then
+			local function hookCharacter(character)
+				local hum = character:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum.Died:Connect(function()
+						addScore(oppositeTeam(team))
+					end)
+				end
+			end
+			if plr.Character then
+				hookCharacter(plr.Character)
+			end
+			plr.CharacterAdded:Connect(hookCharacter)
+		end
+	end
+end
+
 local function endMatch(picked, mapId, winnerTeam)
 	currentPickedPlayers = nil
 	currentMapId = nil
+	teamByUserId = {}
 	matchScores.A = 0
 	matchScores.B = 0
 
@@ -208,6 +234,12 @@ local function startMatchWithPlayers(queueKey, picked)
 		currentMapId = mapId
 		matchScores.A = 0
 		matchScores.B = 0
+		teamByUserId = {}
+		local half = math.ceil(#playersList / 2)
+		for i, plr in ipairs(playersList) do
+			teamByUserId[plr.UserId] = (i <= half) and "A" or "B"
+		end
+		hookDeathsForMatchPlayers()
 		broadcastScore()
 
 		-- Timer fallback: end after MATCH_DURATION, winner = higher score or A if tie
