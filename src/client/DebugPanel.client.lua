@@ -176,7 +176,13 @@ MatchState.OnClientEvent:Connect(function(msg)
 		refresh()
 	elseif msg.phase == "match_over" then
 		_G.__lastMatchOver = { winner = msg.winner, mapId = msg.mapId }
-		refresh()
+		-- Update header immediately so "Match OVER" shows even if refresh() yields or errors
+		local winner = tostring(msg.winner or "?")
+		local existing = headerLabel.Text or ""
+		if not existing:find("Match: OVER") then
+			headerLabel.Text = existing .. "\nMatch: OVER | Winner: Team " .. winner
+		end
+		task.defer(refresh)
 	end
 end)
 

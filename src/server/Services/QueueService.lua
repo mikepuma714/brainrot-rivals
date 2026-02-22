@@ -106,13 +106,15 @@ local function addScore(team)
 	matchScores[team] = (matchScores[team] or 0) + 1
 	broadcastScore()
 
-	if matchScores[team] >= WIN_SCORE then
+	local newScore = matchScores[team]
+	if newScore >= WIN_SCORE then
 		local picked = currentPickedPlayers
 		local mapId = currentMapId
 		currentPickedPlayers = nil
 		currentMapId = nil
 		matchScores.A = 0
 		matchScores.B = 0
+		print("[QueueService] Win: team", team, "reached", newScore, ", ending match for", #picked, "players")
 		local ok, err = pcall(endMatch, picked, mapId, team)
 		if not ok then
 			warn("[QueueService] endMatch error:", err)
@@ -150,6 +152,12 @@ local function endMatch(picked, mapId, winnerTeam)
 	teamByUserId = {}
 	matchScores.A = 0
 	matchScores.B = 0
+
+	if not picked or type(picked) ~= "table" then
+		warn("[QueueService] endMatch: invalid picked", type(picked))
+		return
+	end
+	print("[QueueService] endMatch: winner", winnerTeam, "players", #picked)
 
 	for _, plr in ipairs(picked) do
 		if plr and plr.Parent == Players then
