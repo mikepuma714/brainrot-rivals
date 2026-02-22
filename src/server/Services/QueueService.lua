@@ -16,6 +16,7 @@ local MIN_PLAYERS = 2
 local MAX_PLAYERS = 12
 local COUNTDOWN_TIME = 10
 local COUNTDOWN_TO_START = 5
+local MATCH_DURATION = 60
 
 -- mapKey = mapId .. "|" .. tostring(ranked)
 local queues = {}
@@ -27,6 +28,15 @@ local function mapExists(mapId)
 		if m.id == mapId then return true end
 	end
 	return false
+end
+
+local function getMapReward(mapId)
+	for _, m in ipairs(Maps.List) do
+		if m.id == mapId then
+			return tonumber(m.trophyReward) or 0
+		end
+	end
+	return 0
 end
 
 local function sendQueueStatus(player, ok, reason, payload)
@@ -70,6 +80,37 @@ local function broadcastMatchFound(mapId, ranked, userIds)
 				ranked = ranked,
 				team = team,
 			})
+		end
+	end
+end
+
+local function endMatch(picked, mapId, winnerTeam)
+	for _, plr in ipairs(picked) do
+		if plr and plr.Parent == Players then
+			MatchState:FireClient(plr, {
+				phase = "match_over",
+				mapId = mapId,
+				winner = winnerTeam,
+			})
+		end
+	end
+
+	local reward = getMapReward(mapId)
+	local half = math.ceil(#picked / 2)
+	for i, plr in ipairs(picked) do
+		if plr and plr.Parent == Players then
+			local team = (i <= half) and "A" or "B"
+			if team == winnerTeam then
+				PlayerDataService:IncrementTrophies(plr, reward)
+				PlayerDataService:Save(plr)
+			end
+		end
+	end
+
+	for _, plr in ipairs(picked) do
+		if plr and plr.Parent == Players then
+			plr:LoadCharacter()
+			MatchState:FireClient(plr, { phase = "lobby" })
 		end
 	end
 end
@@ -125,6 +166,12 @@ local function startMatchWithPlayers(queueKey, picked)
 			end
 		end
 		teleportToMapSpawns(playersList, mapId)
+
+		-- TEMP: end the match after MATCH_DURATION
+		task.delay(MATCH_DURATION, function()
+			local winnerTeam = "A"
+			endMatch(playersList, mapId, winnerTeam)
+		end)
 	end)
 end
 
