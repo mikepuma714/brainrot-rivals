@@ -113,7 +113,10 @@ local function addScore(team)
 		currentMapId = nil
 		matchScores.A = 0
 		matchScores.B = 0
-		endMatch(picked, mapId, team)
+		local ok, err = pcall(endMatch, picked, mapId, team)
+		if not ok then
+			warn("[QueueService] endMatch error:", err)
+		end
 	end
 end
 
@@ -319,7 +322,9 @@ end)
 DebugAddScore.OnServerEvent:Connect(function(player, team)
 	if not currentPickedPlayers or not currentMapId then return end
 	if type(team) ~= "string" then return end
-	addScore(team)
+	-- Normalize to "A" or "B"
+	local t = (team == "B" or team == "b") and "B" or "A"
+	addScore(t)
 end)
 
 Players.PlayerRemoving:Connect(function(player)

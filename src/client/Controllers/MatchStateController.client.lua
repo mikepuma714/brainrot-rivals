@@ -39,5 +39,7 @@ MatchStateEvent.OnClientEvent:Connect(function(state)
 		setMovementEnabled(false)
 	elseif state.phase == "in_match" then
 		setMovementEnabled(true)
+	elseif state.phase == "match_over" or state.phase == "lobby" then
+		setMovementEnabled(true)
 	end
 end)

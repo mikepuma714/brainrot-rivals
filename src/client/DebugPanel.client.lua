@@ -84,6 +84,10 @@ local function refresh()
 	if lastMatch and lastMatch.phase == "match_found" then
 		table.insert(lines, string.format("Match: FOUND | Map: %s | Team: %s", tostring(lastMatch.mapId or "—"), tostring(lastMatch.team or "—")))
 	end
+	local matchOver = _G.__lastMatchOver
+	if matchOver and matchOver.winner then
+		table.insert(lines, string.format("Match: OVER | Winner: Team %s", tostring(matchOver.winner)))
+	end
 	table.insert(lines, string.format("Score: A %d - %d B", lastScore.A, lastScore.B))
 	headerLabel.Text = table.concat(lines, "\n")
 
@@ -166,8 +170,12 @@ QueueStatus.OnClientEvent:Connect(function(msg)
 end)
 
 MatchState.OnClientEvent:Connect(function(msg)
-	if msg and msg.phase == "match_found" then
+	if not msg then return end
+	if msg.phase == "match_found" then
 		_G.__lastMatchFound = msg
+		refresh()
+	elseif msg.phase == "match_over" then
+		_G.__lastMatchOver = { winner = msg.winner, mapId = msg.mapId }
 		refresh()
 	end
 end)
