@@ -8,9 +8,12 @@ local SetSelectedMap = Remotes:WaitForChild("SetSelectedMap")
 local RequestQueue = Remotes:WaitForChild("RequestQueue")
 local QueueStatus = Remotes:WaitForChild("QueueStatus")
 local MatchState = Remotes:WaitForChild("MatchState")
+local DebugAddScore = Remotes:WaitForChild("DebugAddScore")
+local ScoreUpdate = Remotes:WaitForChild("ScoreUpdate")
 
 local player = Players.LocalPlayer
 local queueState = { queued = false, reason = "", mapId = nil }
+local lastScore = { A = 0, B = 0 }
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "BrainrotDebugGui"
@@ -18,7 +21,7 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 410)
+frame.Size = UDim2.new(0, 360, 0, 500)
 frame.Position = UDim2.new(0, 20, 0, 120)
 frame.BackgroundTransparency = 0.2
 frame.Parent = gui
@@ -81,6 +84,7 @@ local function refresh()
 	if lastMatch and lastMatch.phase == "match_found" then
 		table.insert(lines, string.format("Match: FOUND | Map: %s | Team: %s", tostring(lastMatch.mapId or "—"), tostring(lastMatch.team or "—")))
 	end
+	table.insert(lines, string.format("Score: A %d - %d B", lastScore.A, lastScore.B))
 	headerLabel.Text = table.concat(lines, "\n")
 
 	-- Clear existing map buttons
@@ -136,6 +140,21 @@ makeButton("Queue", 310, function()
 end)
 
 makeButton("Refresh", 355, function()
+	refresh()
+end)
+
+makeButton("A +1", 400, function()
+	DebugAddScore:FireServer("A")
+end)
+
+makeButton("B +1", 445, function()
+	DebugAddScore:FireServer("B")
+end)
+
+ScoreUpdate.OnClientEvent:Connect(function(s)
+	if type(s) ~= "table" then return end
+	lastScore.A = tonumber(s.A) or 0
+	lastScore.B = tonumber(s.B) or 0
 	refresh()
 end)
 

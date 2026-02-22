@@ -11,17 +11,25 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestQueue = remotes:WaitForChild("RequestQueue")
 local QueueStatus = remotes:WaitForChild("QueueStatus")
 local MatchState = remotes:WaitForChild("MatchState")
+local DebugAddScore = remotes:WaitForChild("DebugAddScore")
+local ScoreUpdate = remotes:WaitForChild("ScoreUpdate")
 
 local MIN_PLAYERS = 2
 local MAX_PLAYERS = 12
 local COUNTDOWN_TIME = 10
 local COUNTDOWN_TO_START = 5
 local MATCH_DURATION = 60
+local WIN_SCORE = 5
 
 -- mapKey = mapId .. "|" .. tostring(ranked)
 local queues = {}
 local queuedKeyByUserId = {}
 local countdownRunning = {}
+
+-- Current match state (for scoring)
+local matchScores = { A = 0, B = 0 }
+local currentPickedPlayers = nil
+local currentMapId = nil
 
 local function mapExists(mapId)
 	for _, m in ipairs(Maps.List) do
@@ -84,7 +92,36 @@ local function broadcastMatchFound(mapId, ranked, userIds)
 	end
 end
 
+local function broadcastScore()
+	local payload = { A = matchScores.A, B = matchScores.B }
+	for _, plr in ipairs(Players:GetPlayers()) do
+		ScoreUpdate:FireClient(plr, payload)
+	end
+end
+
+local function addScore(team)
+	if team ~= "A" and team ~= "B" then return end
+	if not currentPickedPlayers or not currentMapId then return end
+	matchScores[team] = (matchScores[team] or 0) + 1
+	broadcastScore()
+
+	if matchScores[team] >= WIN_SCORE then
+		local picked = currentPickedPlayers
+		local mapId = currentMapId
+		currentPickedPlayers = nil
+		currentMapId = nil
+		matchScores.A = 0
+		matchScores.B = 0
+		endMatch(picked, mapId, team)
+	end
+end
+
 local function endMatch(picked, mapId, winnerTeam)
+	currentPickedPlayers = nil
+	currentMapId = nil
+	matchScores.A = 0
+	matchScores.B = 0
+
 	for _, plr in ipairs(picked) do
 		if plr and plr.Parent == Players then
 			MatchState:FireClient(plr, {
@@ -167,10 +204,17 @@ local function startMatchWithPlayers(queueKey, picked)
 		end
 		teleportToMapSpawns(playersList, mapId)
 
-		-- TEMP: end the match after MATCH_DURATION
+		currentPickedPlayers = playersList
+		currentMapId = mapId
+		matchScores.A = 0
+		matchScores.B = 0
+		broadcastScore()
+
+		-- Timer fallback: end after MATCH_DURATION, winner = higher score or A if tie
 		task.delay(MATCH_DURATION, function()
-			local winnerTeam = "A"
-			endMatch(playersList, mapId, winnerTeam)
+			if not currentPickedPlayers then return end
+			local winnerTeam = (matchScores.A >= matchScores.B) and "A" or "B"
+			endMatch(currentPickedPlayers, currentMapId, winnerTeam)
 		end)
 	end)
 end
@@ -238,6 +282,12 @@ RequestQueue.OnServerEvent:Connect(function(player, mapId)
 			startMatchWithPlayers(key, picked)
 		end)
 	end
+end)
+
+DebugAddScore.OnServerEvent:Connect(function(player, team)
+	if not currentPickedPlayers or not currentMapId then return end
+	if type(team) ~= "string" then return end
+	addScore(team)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
