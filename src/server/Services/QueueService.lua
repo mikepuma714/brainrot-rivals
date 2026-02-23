@@ -87,12 +87,14 @@ end
 
 -- Teams auto-balance: first half A, second half B
 local function broadcastMatchFound(mapId, ranked, userIds)
+	local remote = getMatchStateRemote()
+	if not remote then return end
 	local half = math.ceil(#userIds / 2)
 	for i, uid in ipairs(userIds) do
 		local player = Players:GetPlayerByUserId(uid)
 		if player then
 			local team = (i <= half) and "A" or "B"
-			MatchState:FireClient(player, {
+			remote:FireClient(player, {
 				phase = "match_found",
 				mapId = mapId,
 				ranked = ranked,
@@ -292,11 +294,12 @@ local function startMatchWithPlayers(queueKey, picked)
 	local ranked = (rankedStr == "true")
 	broadcastMatchFound(mapId, ranked, picked)
 
+	local matchStateRemote = getMatchStateRemote()
 	-- Phase: countdown (5s) then in_match
 	for _, uid in ipairs(picked) do
 		local player = Players:GetPlayerByUserId(uid)
-		if player then
-			MatchState:FireClient(player, { phase = "countdown", seconds = COUNTDOWN_TO_START, mapId = mapId, ranked = ranked })
+		if player and matchStateRemote then
+			matchStateRemote:FireClient(player, { phase = "countdown", seconds = COUNTDOWN_TO_START, mapId = mapId, ranked = ranked })
 		end
 	end
 	task.delay(COUNTDOWN_TO_START, function()
@@ -304,7 +307,10 @@ local function startMatchWithPlayers(queueKey, picked)
 		for _, uid in ipairs(picked) do
 			local player = Players:GetPlayerByUserId(uid)
 			if player then
-				MatchState:FireClient(player, { phase = "in_match", mapId = mapId, ranked = ranked })
+				local remote = getMatchStateRemote()
+				if remote then
+					remote:FireClient(player, { phase = "in_match", mapId = mapId, ranked = ranked })
+				end
 				table.insert(playersList, player)
 			end
 		end
@@ -384,14 +390,20 @@ RequestQueue.OnServerEvent:Connect(function(player, mapId)
 			countdownRunning[key] = false
 
 			local qNow = queues[key]
-			if not qNow or #qNow < MIN_PLAYERS then return end
+			if not qNow or #qNow < MIN_PLAYERS then
+				logWarn("[QueueService] countdown ended, not enough players for key", key, "count=", qNow and #qNow or 0, "(need", MIN_PLAYERS, ")")
+				return
+			end
 
 			local toTake = math.min(MAX_PLAYERS, #qNow)
 			local picked = {}
 			for i = 1, toTake do
 				table.insert(picked, table.remove(qNow, 1))
 			end
-			startMatchWithPlayers(key, picked)
+			local ok, err = pcall(startMatchWithPlayers, key, picked)
+			if not ok then
+				logWarn("[QueueService] countdown startMatchWithPlayers error:", err)
+			end
 		end)
 	end
 end)
