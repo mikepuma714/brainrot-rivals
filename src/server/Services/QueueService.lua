@@ -1,6 +1,12 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Safe log: warn can be nil in some server contexts
+local function logWarn(...)
+	local fn = type(warn) == "function" and warn or print
+	fn(...)
+end
+
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -31,6 +37,9 @@ local matchScores = { A = 0, B = 0 }
 local currentPickedPlayers = nil
 local currentMapId = nil
 local teamByUserId = {}
+
+-- Forward declaration so addScore (defined earlier) can call endMatch
+local endMatch
 
 local function mapExists(mapId)
 	for _, m in ipairs(Maps.List) do
@@ -115,10 +124,10 @@ local function addScore(team)
 		matchScores.A = 0
 		matchScores.B = 0
 		-- Log so it shows in Server Output (in Test > Server and Clients, check the SERVER window)
-		warn("[QueueService] WIN: team", team, "reached", newScore, "| ending match for", picked and #picked or 0, "players")
+		logWarn("[QueueService] WIN: team", team, "reached", newScore, "| ending match for", picked and #picked or 0, "players")
 		local ok, err = pcall(endMatch, picked, mapId, team)
 		if not ok then
-			warn("[QueueService] endMatch ERROR:", err)
+			logWarn("[QueueService] endMatch ERROR:", err)
 		end
 	end
 end
@@ -152,7 +161,7 @@ local function getMatchStateRemote()
 	return folder and folder:FindFirstChild("MatchState")
 end
 
-local function endMatch(picked, mapId, winnerTeam)
+endMatch = function(picked, mapId, winnerTeam)
 	currentPickedPlayers = nil
 	currentMapId = nil
 	teamByUserId = {}
@@ -160,13 +169,13 @@ local function endMatch(picked, mapId, winnerTeam)
 	matchScores.B = 0
 
 	if not picked or type(picked) ~= "table" then
-		warn("[QueueService] endMatch: invalid picked", type(picked))
+		logWarn("[QueueService] endMatch: invalid picked", type(picked))
 		return
 	end
 
 	local matchStateRemote = getMatchStateRemote()
 	if not matchStateRemote then
-		warn("[QueueService] endMatch: MatchState remote is nil, cannot fire to clients")
+		logWarn("[QueueService] endMatch: MatchState remote is nil, cannot fire to clients")
 	end
 
 	-- 1) Fire match_over first so clients know the match ended (even if later steps error)
@@ -179,7 +188,7 @@ local function endMatch(picked, mapId, winnerTeam)
 			})
 		end
 	end
-	warn("[QueueService] endMatch: sent match_over to", #picked, "players, winner", winnerTeam)
+	logWarn("[QueueService] endMatch: sent match_over to", #picked, "players, winner", winnerTeam)
 
 	-- 2) Award trophies (pcall so a failure doesn't block lobby)
 	local reward = getMapReward(mapId)
@@ -193,7 +202,7 @@ local function endMatch(picked, mapId, winnerTeam)
 					PlayerDataService:Save(plr)
 				end)
 				if not ok then
-					warn("[QueueService] endMatch: trophy/save error for", plr.Name, err)
+					logWarn("[QueueService] endMatch: trophy/save error for", plr.Name, err)
 				end
 			end
 		end
@@ -210,7 +219,7 @@ local function endMatch(picked, mapId, winnerTeam)
 				end
 			end)
 			if not ok then
-				warn("[QueueService] endMatch: LoadCharacter/lobby error for", plr.Name, err)
+				logWarn("[QueueService] endMatch: LoadCharacter/lobby error for", plr.Name, err)
 			end
 		end
 	end
@@ -219,7 +228,7 @@ end
 local function teleportToMapSpawns(players, mapId)
 	local mapFolder = workspace:FindFirstChild(mapId)
 	if not mapFolder then
-		warn("Map not found:", mapId)
+		logWarn("Map not found:", mapId)
 		return
 	end
 
