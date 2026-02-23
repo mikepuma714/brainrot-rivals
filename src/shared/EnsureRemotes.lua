@@ -33,6 +33,7 @@ ensureRemote(remotes, "RemoteEvent", "MatchState")
 ensureRemote(remotes, "RemoteEvent", "DebugAddScore")
 ensureRemote(remotes, "RemoteEvent", "ScoreUpdate")
 ensureRemote(remotes, "RemoteEvent", "RequestAbility")
+ensureRemote(remotes, "RemoteEvent", "PlayAbility")
 
 -- If you still use this anywhere, keep it too:
 ensureRemote(remotes, "RemoteFunction", "GetLobbyState")
