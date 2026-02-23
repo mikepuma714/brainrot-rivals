@@ -40,6 +40,8 @@ local teamByUserId = {}
 
 -- Forward declaration so addScore (defined earlier) can call endMatch
 local endMatch
+-- Forward declaration so broadcastMatchFound/startMatchWithPlayers can call getMatchStateRemote
+local getMatchStateRemote
 
 local function mapExists(mapId)
 	for _, m in ipairs(Maps.List) do
@@ -173,7 +175,7 @@ local function hookDeathsForMatchPlayers()
 	end
 end
 
-local function getMatchStateRemote()
+getMatchStateRemote = function()
 	local folder = ReplicatedStorage:FindFirstChild("Remotes")
 	return folder and folder:FindFirstChild("MatchState")
 end
