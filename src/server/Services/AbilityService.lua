@@ -66,6 +66,22 @@ RequestAbility.OnServerEvent:Connect(function(player: Player, payload)
 
 	humanoid:TakeDamage(DAMAGE)
 
+	local targetChar = humanoid.Parent
+	local targetHrp = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+	if targetHrp then
+		local pushDir = (targetHrp.Position - hrp.Position)
+		if pushDir.Magnitude > 0 then
+			pushDir = pushDir.Unit
+		else
+			pushDir = hrp.CFrame.LookVector
+		end
+
+		local HORIZONTAL_FORCE = 60
+		local UP_FORCE = 20
+
+		targetHrp:ApplyImpulse((pushDir * HORIZONTAL_FORCE + Vector3.new(0, UP_FORCE, 0)) * targetHrp.AssemblyMass)
+	end
+
 	print(("[AbilityService] %s hit with Bat Smash"):format(player.Name))
 end)
 
