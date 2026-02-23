@@ -17,6 +17,7 @@ end
 
 require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("EnsureRemotes"))
 require(script.Parent:WaitForChild("Services"):WaitForChild("QueueService"))
+require(script.Parent:WaitForChild("Services"):WaitForChild("AbilityService"))
 
 -- Create remotes folder and functions if needed
 local remotesFolder = ReplicatedStorage:FindFirstChild(RemotesDef.FolderName)
