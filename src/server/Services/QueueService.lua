@@ -142,12 +142,27 @@ local function hookDeathsForMatchPlayers()
 		if team then
 			local function hookCharacter(character)
 				local hum = character:FindFirstChildOfClass("Humanoid")
-				if hum then
-					hum.Died:Connect(function()
-						addScore(oppositeTeam(team))
+				if not hum then return end
+
+				-- Ensure every respawn goes back to the right team spawn during the match
+				task.defer(function()
+					if currentPickedPlayers and currentMapId and plr.Parent == Players then
+						teleportPlayerToTeamSpawn(plr, currentMapId, team)
+					end
+				end)
+
+				hum.Died:Connect(function()
+					addScore(oppositeTeam(team))
+
+					-- Respawn back into match after a short delay (only if match still active)
+					task.delay(3, function()
+						if not currentPickedPlayers or not currentMapId then return end
+						if plr.Parent ~= Players then return end
+						plr:LoadCharacter()
 					end)
-				end
+				end)
 			end
+
 			if plr.Character then
 				hookCharacter(plr.Character)
 			end
@@ -244,6 +259,24 @@ local function teleportToMapSpawns(players, mapId)
 				player.Character:SetPrimaryPartCFrame(spawn.CFrame + Vector3.new(0, 3, 0))
 			end
 		end
+	end
+end
+
+local function teleportPlayerToTeamSpawn(player, mapId, team)
+	local mapFolder = workspace:FindFirstChild(mapId)
+	if not mapFolder then return end
+
+	local spawn = (team == "A") and mapFolder:FindFirstChild("TeamASpawn") or mapFolder:FindFirstChild("TeamBSpawn")
+	if not spawn or not spawn:IsA("BasePart") then return end
+
+	local char = player.Character
+	if not char then return end
+
+	local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 2)
+	if hrp then
+		hrp.CFrame = spawn.CFrame + Vector3.new(0, 3, 0)
+	elseif char.PrimaryPart then
+		char:SetPrimaryPartCFrame(spawn.CFrame + Vector3.new(0, 3, 0))
 	end
 end
 
