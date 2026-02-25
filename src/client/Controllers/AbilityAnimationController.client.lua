@@ -7,7 +7,7 @@ local PlayAbility = remotes:WaitForChild("PlayAbility")
 
 -- TEMP animation id placeholder (we'll replace once you publish the real animation)
 local ANIMS = {
-	bat_smash = "rbxassetid://0"
+	bat_smash = "rbxassetid://73195248201536"
 }
 
 local function playAnim(abilityId: string)
