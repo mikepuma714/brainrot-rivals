@@ -1,11 +1,8 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
-local remotes = ReplicatedStorage:WaitForChild("Remotes")
-local PlayAbility = remotes:WaitForChild("PlayAbility")
 
--- TEMP animation id placeholder (we'll replace once you publish the real animation)
+-- Animation IDs (bat_smash played locally on input from AbilityInputController)
 local ANIMS = {
 	bat_smash = "rbxassetid://73195248201536"
 }
@@ -33,12 +30,13 @@ local function playAnim(abilityId: string)
 	anim.AnimationId = animId
 
 	local track = animator:LoadAnimation(anim)
-	track:Play()
+	track.Looped = false
+	track.Priority = Enum.AnimationPriority.Action
+	track:Stop(0)
+	track:Play(0.05, 1, 1)
 end
 
-PlayAbility.OnClientEvent:Connect(function(payload)
-	if typeof(payload) ~= "table" then return end
-	local abilityId = payload.abilityId
-	if type(abilityId) ~= "string" then return end
-	playAnim(abilityId)
-end)
+-- Expose for AbilityInputController: play animation on input (server no longer fires PlayAbility)
+_G.playBatSmash = function()
+	playAnim("bat_smash")
+end

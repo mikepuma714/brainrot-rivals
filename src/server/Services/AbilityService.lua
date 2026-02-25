@@ -3,7 +3,6 @@ local Players = game:GetService("Players")
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestAbility = remotes:WaitForChild("RequestAbility")
-local PlayAbility = remotes:WaitForChild("PlayAbility")
 
 local ABILITY_ID = "bat_smash"
 local COOLDOWN = 2.0
@@ -82,8 +81,6 @@ RequestAbility.OnServerEvent:Connect(function(player: Player, payload)
 
 		targetHrp:ApplyImpulse((pushDir * HORIZONTAL_FORCE + Vector3.new(0, UP_FORCE, 0)) * targetHrp.AssemblyMass)
 	end
-
-	PlayAbility:FireClient(player, { abilityId = "bat_smash" })
 
 	print(("[AbilityService] %s hit with Bat Smash"):format(player.Name))
 end)
